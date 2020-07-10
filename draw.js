@@ -1,21 +1,31 @@
 const GRAY = 0;
 const COLOR = 1;
 const HIGHLIGHT = 2;
+const REAL = 3;
 
 function get_color(v, flag){
-    v += 1; v /= 2.0; v *= 255;
+    v *= 255;
     let r, g, b;
     if(flag === GRAY) r = g = b = v;
     if(flag === COLOR){
         r = 0; g = v; b = 255-v;
     }
     if(flag === HIGHLIGHT){
-        r = 0; g = v; b = 255-v;
+        r = v-0.5*255; g = v; b = 255-v;
         if(Math.abs(0.5 - v/255) > 0.1){
             v /= 255;
             let t = 4*(v-1)*(v-1)*(v-1)+v+1; t /= 2;
             t *= 255;
             r = 0; g = t; b = 255-t;
+        }
+    }
+    if(flag === REAL){
+        r = v-0.5*255; g = v; b = 255-v;
+        if(v/255 < 0.45){
+            v /= 255;
+            let t = 4 * (v - 1) * (v - 1) * (v - 1) + v + 1; t /= 2;
+            t *= 255;
+            r = 0; g = t; b = 255 - t;
         }
     }
     //if(flag === HIGHLIGHT && v > 0.6*255) return `rgb(0,50,0)`;
@@ -27,19 +37,25 @@ let perlinNoise = new Noise();
 const STEP = 0.01;
 function makeNoiseMap(){
     let ret = {};
+    let mx = -1e9, mn = 1e9;
     for(let i=0; i<1000*STEP; i+=STEP) for(let j=0; j<1000*STEP; j+=STEP){
-        ret[i+","+j] = perlinNoise.noiseWithOctave(i, j, 1, 3, 0.75);
+        let now = perlinNoise.noiseWithOctave(i, j, 1, 3, 0.75);
+        ret[i+","+j] = now;
+        mx = Math.max(mx, now); mn = Math.min(mn, now);
     }
+    ret.mx = mx; ret.mn = mn;
     return ret;
 }
-function draw_2d(){
+function draw(){
     let canvas = document.getElementById("canv");
     let ctx = canvas.getContext('2d');
 
     let res = makeNoiseMap();
-    let mx = -1e9, mn = 1e9;
+    let a = res.mn, b = res.mx;
+    let mn = 1e9, mx = -1e9;
     for(let i=0; i<1000*STEP; i+=STEP) for(let j=0; j<1000*STEP; j+=STEP){
-        let now = res[i+","+j]; mx = Math.max(mx, now); mn = Math.min(mn, now);
+        let now = res[i+","+j]; now = (now - a) / (b - a);
+        mx = Math.max(mx, now); mn = Math.min(mn, now);
 
         ctx.fillStyle = get_color(now, GRAY);
         ctx.fillRect(i/STEP, j/STEP, 1, 1);

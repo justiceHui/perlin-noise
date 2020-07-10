@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>perlin noise test</title>
+    <meta charset="UTF-8" />
+    <script type="text/javascript" charset="UTF-8" src="./three/build/three.min.js"></script>
+    <script type="text/javascript" charset="UTF-8" src="./noise.js"></script>
+    <script type="text/javascript" charset="UTF-8" src="./three/examples/js/controls/TrackballControls.js"></script>
+    <!--<script type="text/javascript" src="./js/01-01.js"></script>-->
+</head>
+<body>
+<!-- Div which will hold the Output -->
+<div id="webgl-output"></div>
+<!-- Javascript code that runs our Three.js examples -->
+<script type="text/javascript">
+    function addCube(scene, x, y, z, sz){
+        let geo = new THREE.BoxGeometry(sz, sz, sz);
+        let mate = new THREE.MeshLambertMaterial({
+            color: 0x777777,
+            wireframe: false
+        });
+        let cube = new THREE.Mesh(geo, mate);
+        cube.position.set(x, y, z);
+        cube.castShadow = true;
+        scene.add(cube);
+    }
+    let perlinNoise = new Noise(1010101);
+    const STEP = 0.1;
+    const SZ = 25;
+    function makeNoiseMap(){
+        let ret = {};
+        let mx = -1e9, mn = 1e9;
+        for(let i=-SZ*STEP; i<SZ*STEP; i+=STEP) for(let j=-SZ*STEP; j<SZ*STEP; j+=STEP) for(let k=-SZ*STEP; k<SZ*STEP; k+=STEP){
+            let now = perlinNoise.noiseWithOctave(i, j, k, 1, 0.75);
+            ret[i+","+j+","+k] = now;
+            mx = Math.max(mx, now); mn = Math.min(mn, now);
+        }
+        ret.mx = mx; ret.mn = mn;
+        return ret;
+    }
+    function draw(scene){
+        let res = makeNoiseMap();
+        console.log("make noise");
+        let a = res.mn, b = res.mx;
+        let mn = 1e9, mx = -1e9;
+        for(let i=-SZ*STEP; i<SZ*STEP; i+=STEP) for(let j=-SZ*STEP; j<SZ*STEP; j+=STEP) for(let k=-SZ*STEP; k<SZ*STEP; k+=STEP){
+            //if(i*i + j*j + k*k > SZ*STEP*SZ*STEP) continue;
+            if(k === 0) console.log(i + ", " + j);
+            let now = res[i+","+j+","+k]; now = (now - a) / (b - a);
+            mx = Math.max(mx, now); mn = Math.min(mn, now);
+            if(now <= 0.3) addCube(scene, i/STEP/10, j/STEP/10, k/STEP/10, 0.1);
+        }
+        console.log(mx);
+        console.log(mn);
+
+        //draw_vector();
+    }
+
+    function init() {
+        let scene = new THREE.Scene();
+        let camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        let renderer = new THREE.WebGLRenderer();
+        renderer.setClearColor(new THREE.Color(0x000000));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+
+        let spotLight = new THREE.SpotLight(0xFFFFFF);
+        spotLight.position.set(-40, 40, -15);
+        spotLight.castShadow = true;
+        spotLight.shadow.mapSize = new THREE.Vector2(1024, 1024);
+        spotLight.shadow.camera.far = 130;
+        spotLight.shadow.camera.near = 40;
+        scene.add(spotLight);
+
+        let axes = new THREE.AxesHelper(10);
+        scene.add(axes);
+
+        let planeGeometry = new THREE.PlaneGeometry(20, 20);
+        let planeMaterial = new THREE.MeshLambertMaterial({
+            color: 0xCCCCCC
+        });
+        let plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -0.5 * Math.PI;
+        plane.position.set(0, -SZ*STEP*2, 0);
+        //plane.receiveShadow = true;
+        scene.add(plane);
+
+        draw(scene);
+
+        let border_geo = new THREE.BoxGeometry(SZ*STEP*2, SZ*STEP*2, SZ*STEP*2);
+        let border_material = new THREE.MeshLambertMaterial({
+            color: 0xFF0000,
+            wireframe: true
+        });
+        let border = new THREE.Mesh(border_geo, border_material);
+        border.position.set(0, 0, 0);
+        //cube.castShadow = true;
+        scene.add(border);
+
+
+        camera.position.set(-15, 15, 15);
+        camera.lookAt(scene.position);
+
+        document.getElementById("webgl-output").appendChild(renderer.domElement);
+        renderer.render(scene, camera);
+    }
+    (function () {
+        // contains the code for the example
+        init();
+    })();
+</script>
+</body>
+</html>
